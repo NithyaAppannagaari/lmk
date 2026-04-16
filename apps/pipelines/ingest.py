@@ -25,8 +25,17 @@ anthropic = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 HN_URL = "https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=30"
 
 RSS_FEEDS = [
+    # LLM / AI
     {"name": "TechCrunch AI", "url": "https://techcrunch.com/category/artificial-intelligence/feed/"},
     {"name": "Axios Pro Rata", "url": "https://api.axios.com/feed/"},
+    # DeFi
+    {"name": "The Defiant", "url": "https://thedefiant.io/feed"},
+    {"name": "DL News", "url": "https://dlnews.com/arc/outboundfeeds/rss/"},
+    {"name": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/"},
+    {"name": "The Block", "url": "https://www.theblock.co/rss.xml"},
+    # Quant / Prediction Markets
+    {"name": "Polymarket Oracle", "url": "https://news.polymarket.com/feed"},
+    {"name": "CryptoPanic", "url": "https://cryptopanic.com/news/rss/?kind=news&filter=hot"},
 ]
 
 
@@ -54,7 +63,7 @@ def fetch_rss():
     items = []
     for feed in RSS_FEEDS:
         parsed = feedparser.parse(feed["url"])
-        for entry in parsed.entries[:15]:  # cap at 15 per feed
+        for entry in parsed.entries[:10]:  # cap at 10 per feed
             url = entry.get("link")
             title = entry.get("title")
             if not url or not title:
@@ -97,8 +106,8 @@ def classify(title):
 
                     Categories:
                     - "llm": Frontier AI labs, model releases, AI tooling, inference infrastructure, RAG, agents, AI startups and funding
-                    - "defi": DeFi protocols, on-chain finance, blockchain infrastructure, crypto startups and venture activity
-                    - "quant": Prediction markets, trading systems, market microstructure, quant infrastructure, capital flows
+                    - "defi": DeFi protocols, on-chain finance, blockchain infrastructure, crypto startups and venture activity. NOT trading systems or prediction markets.
+                    - "quant": Prediction markets (Polymarket, Kalshi), algorithmic trading systems, market microstructure, quant research, trading infrastructure and tooling, hedge fund activity. NOT general crypto or DeFi — only classify as quant if it has a direct trading/markets angle.
                     - "general": Broader engineering topics, system design, developer tooling, platform infrastructure, general tech startups
 
                     An article can belong to multiple categories if relevant (e.g. an AI trading system is both "llm" and "quant").
