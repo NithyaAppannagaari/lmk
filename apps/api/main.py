@@ -1,9 +1,20 @@
 from fastapi import FastAPI
-from routers import insights
+from fastapi.middleware.cors import CORSMiddleware
+from routers import auth, feed, preferences
 
 app = FastAPI(title="lmk API")
 
-app.include_router(insights.router, prefix="/v1")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router, prefix="/v1")
+app.include_router(feed.router, prefix="/v1")
+app.include_router(preferences.router, prefix="/v1")
+
 
 @app.get("/")
 def root():

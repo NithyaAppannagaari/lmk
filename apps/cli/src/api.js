@@ -1,18 +1,30 @@
 import axios from 'axios';
 import config from './config.js';
 
-const client = axios.create({
+function client() {
+  const apiKey = config.get('apiKey');
+  return axios.create({
     baseURL: config.get('apiUrl'),
-});
+    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+  });
+}
 
-export async function fetchInsights(category = null) {
-    const params = { limit: 10 };
-    if (category) params.category = category;
-    const res = await client.get('/insights', { params });
-    return res.data;
-};
+export async function register(email) {
+  const res = await client().post('/auth/register', { email });
+  return res.data.api_key;
+}
 
-export async function fetchDigest(summaries) {
-    const res = await client.post('/digest', { summaries });
-    return res.data.digest;
-};
+export async function fetchFeed(categories = []) {
+  const params = categories.length ? { categories: categories.join(',') } : {};
+  const res = await client().get('/feed', { params });
+  return res.data;
+}
+
+export async function storePreference(text) {
+  await client().post('/preferences', { text });
+}
+
+export async function whoami() {
+  const res = await client().get('/auth/me');
+  return res.data.email;
+}

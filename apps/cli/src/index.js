@@ -1,51 +1,126 @@
 #!/usr/bin/env node
 
+import readline from 'readline';
 import { program } from 'commander';
 import ora from 'ora';
-import { fetchInsights, fetchDigest } from './api.js';
-import { printInsights } from './format.js';
+import config from './config.js';
+import { register, fetchFeed, storePreference, whoami } from './api.js';
+import { printFeed } from './format.js';
+
+// ── Auth subcommand ───────────────────────────────────
+
+const auth = program.command('auth');
+
+auth
+  .command('login')
+  .description('Authenticate with your email to get an API key')
+  .action(async () => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const email = await new Promise(resolve =>
+      rl.question('Email: ', ans => { rl.close(); resolve(ans.trim()); })
+    );
+
+    if (!email) { console.error('Email required.'); process.exit(1); }
+
+    const spinner = ora('Authenticating...').start();
+    try {
+      const apiKey = await register(email);
+      config.set('apiKey', apiKey);
+      config.set('email', email);
+      spinner.succeed(`Authenticated as ${email}`);
+      console.log(`\n  Run ${chalk_bold('lmk')} to get started.\n`);
+    } catch (err) {
+      spinner.fail('Authentication failed');
+      console.error(err.message);
+      process.exit(1);
+    }
+  });
+
+auth
+  .command('logout')
+  .description('Clear local credentials')
+  .action(() => {
+    config.delete('apiKey');
+    config.delete('email');
+    console.log('\n  Logged out.\n');
+  });
+
+auth
+  .command('whoami')
+  .description('Show the currently authenticated email')
+  .action(async () => {
+    const stored = config.get('email');
+    if (stored) { console.log(`\n  ${stored}\n`); return; }
+
+    const apiKey = config.get('apiKey');
+    if (!apiKey) { console.error('\n  Not authenticated. Run: lmk auth login\n'); process.exit(1); }
+
+    try {
+      const email = await whoami();
+      config.set('email', email);
+      console.log(`\n  ${email}\n`);
+    } catch {
+      console.error('\n  Not authenticated. Run: lmk auth login\n');
+      process.exit(1);
+    }
+  });
+
+function chalk_bold(s) { return `\x1b[1m${s}\x1b[0m`; }
+
+// ── Main command ──────────────────────────────────────
 
 program
   .name('lmk')
-  .description('Developer intelligence & action system')
-  .version('0.1.0');
-
-program
-  .option('--llm', 'LLM and AI ecosystem updates')
-  .option('--defi', 'DeFi ecosystem updates')
-  .option('--quant', 'Prediction markets (Polymarket, Kalshi), algo trading, market microstructure, quant research & infra, hedge fund activity — NOT general crypto/DeFi')
-  .option('--general', 'General engineering updates')
+  .description('Personalized developer news')
+  .version('0.1.0')
+  .option('--llm', 'LLM and AI ecosystem')
+  .option('--defi', 'DeFi and on-chain finance')
+  .option('--quant', 'Prediction markets, algo trading, quant research')
+  .option('--general', 'Developer tooling, OSS, infra')
+  .option('--chat', 'Tell lmk what you want to learn (updates personalization)')
   .action(async (options) => {
-    const categories = ['llm', 'defi', 'quant', 'general'].filter(c => options[c]);
+    if (!config.get('apiKey')) {
+      console.error('\n  Not authenticated. Run: lmk auth login\n');
+      process.exit(1);
+    }
 
-    const label = categories.length > 0 ? categories.map(c => c.toUpperCase()).join(' + ') : 'ALL';
-    const spinner = ora(`Fetching ${label} insights...`).start();
-    try {
-      // fetch items for each selected category (or all if no flags)
-      let items;
-      if (categories.length === 0) {
-        items = await fetchInsights();
-      } else {
-        const results = await Promise.all(categories.map(c => fetchInsights(c)));
-        // combine and dedupe by source_url
-        const seen = new Set();
-        items = results.flat().filter(item => {
-          if (seen.has(item.source_url)) return false;
-          seen.add(item.source_url);
-          return true;
-        });
-        items.sort((a, b) => b.signal_score - a.signal_score);
+    // --chat: one-shot preference capture
+    if (options.chat) {
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      const text = await new Promise(resolve =>
+        rl.question('\nWhat do you want to learn about?\n> ', ans => { rl.close(); resolve(ans.trim()); })
+      );
+      if (!text) { console.log('Nothing saved.'); return; }
+
+      const spinner = ora('Saving preferences...').start();
+      try {
+        await storePreference(text);
+        spinner.succeed('Got it. Your next lmk run will reflect this.\n');
+      } catch (err) {
+        spinner.fail('Failed to save preferences');
+        console.error(err.message);
+        process.exit(1);
       }
+      return;
+    }
 
-      // generate one digest from all collected summaries
-      const summaries = items.map(i => i.summary).filter(Boolean);
-      const digest = summaries.length > 0 ? await fetchDigest(summaries) : null;
+    // News feed
+    const categories = ['llm', 'defi', 'quant', 'general'].filter(c => options[c]);
+    const label = categories.length ? categories.map(c => c.toUpperCase()).join('+') : 'ALL';
 
+    const spinner = ora(`Fetching ${label}...`).start();
+    try {
+      const data = await fetchFeed(categories);
       spinner.stop();
-      printInsights(items, categories.length === 1 ? categories[0] : null, digest);
+      printFeed(data, categories);
     } catch (err) {
-      spinner.fail('Failed to fetch insights');
-      console.error(err.message);
+      spinner.fail('Failed to fetch feed');
+      if (err.response?.status === 401) {
+        console.error('  Not authenticated. Run: lmk auth login');
+      } else {
+        console.error(err.message);
+      }
+      process.exit(1);
     }
   });
 

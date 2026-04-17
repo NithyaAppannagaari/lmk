@@ -1,43 +1,57 @@
 import chalk from 'chalk';
 
-const CATEGORY_EMOJI = {
-  llm: '🧠',
-  defi: '⛓️',
-  quant: '📊',
-  general: '⚙️',
-};
+const CATEGORY_EMOJI = { llm: '🧠', defi: '⛓️', quant: '📊', general: '⚙️' };
+const DISPLAY_LIMIT = 10;
 
-const DISPLAY_LIMIT = 5;
-
-function printDigest(digest, category) {
-  const label = category ? category.toUpperCase() : 'TODAY';
-  console.log(chalk.bold(`── ${label} DIGEST ──────────────────────────`));
-  console.log(digest);
-  console.log();
+function timeAgo(isoString) {
+  if (!isoString) return null;
+  const mins = Math.floor((Date.now() - new Date(isoString)) / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ago`;
 }
 
-export function printInsights(insights, category = null, digest = null) {
-  if (!insights || insights.length === 0) {
-    const label = category ? category.toUpperCase() : 'this category';
-    console.log(`  No insights found for ${label}.\n`);
+function hostname(url) {
+  try { return new URL(url).hostname.replace('www.', ''); }
+  catch { return url; }
+}
+
+export function printFeed({ items, personalized, ingested_at }, categories) {
+  if (!items || items.length === 0) {
+    console.log(chalk.dim('  No results found.'));
     return;
   }
 
-  if (digest) {
-    printDigest(digest, category);
-  }
+  const label = categories.length
+    ? categories.map(c => `${CATEGORY_EMOJI[c] ?? '📌'} ${c.toUpperCase()}`).join('  ')
+    : '📡 ALL';
 
-  const displayed = insights.slice(0, DISPLAY_LIMIT);
-  for (const insight of displayed) {
-    const emoji = CATEGORY_EMOJI[insight.categories?.[0]] ?? '📌';
-    console.log(`${emoji}  ${chalk.bold(insight.raw_title)}`);
-    console.log(`    → ${insight.summary}`);
-    console.log(`    ${chalk.dim(insight.source_url)}`);
+  console.log();
+  console.log(chalk.bold(`${label}  ${chalk.dim('─'.repeat(42))}`));
+  console.log();
+
+  const shown = items.slice(0, DISPLAY_LIMIT);
+  for (const item of shown) {
+    console.log(`  ${chalk.white('•')} ${chalk.bold(item.raw_title)}`);
+    if (item.summary) {
+      console.log(`    ${chalk.dim(item.summary)}`);
+    }
+    console.log(`    ${chalk.dim(hostname(item.source_url))}`);
     console.log();
   }
 
-  if (insights.length > DISPLAY_LIMIT) {
-    console.log(chalk.dim(`  + ${insights.length - DISPLAY_LIMIT} more — run with a category flag to filter`));
+  if (items.length > DISPLAY_LIMIT) {
+    console.log(chalk.dim(`  + ${items.length - DISPLAY_LIMIT} more`));
     console.log();
   }
+
+  const footer = [
+    `${shown.length} item${shown.length !== 1 ? 's' : ''}`,
+    personalized ? chalk.green('personalized') : chalk.dim('not personalized'),
+    ingested_at ? chalk.dim(timeAgo(ingested_at)) : null,
+  ].filter(Boolean).join(chalk.dim(' · '));
+
+  console.log(`  ${chalk.dim('─'.repeat(48))}`);
+  console.log(`  ${footer}`);
+  console.log();
 }
