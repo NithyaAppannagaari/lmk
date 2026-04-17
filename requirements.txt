@@ -6,5 +6,5 @@ python-dotenv
 feedparser
 httpx
 trafilatura
-sentence-transformers
+fastembed
 numpy
