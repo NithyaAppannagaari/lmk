@@ -3,5 +3,5 @@ builder = "nixpacks"
 buildCommand = "pip install -r requirements.txt && python -c \"from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')\""
 
 [deploy]
-startCommand = "cd apps/api && uvicorn main:app --host 0.0.0.0 --port $PORT"
+startCommand = "bash -c 'if [ \"$SERVICE_TYPE\" = \"worker\" ]; then python apps/pipelines/ingest.py; else cd apps/api && uvicorn main:app --host 0.0.0.0 --port $PORT; fi'"
 restartPolicyType = "on_failure"

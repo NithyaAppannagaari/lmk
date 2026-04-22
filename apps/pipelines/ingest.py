@@ -8,7 +8,7 @@ from anthropic import Anthropic
 from supabase import create_client
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path="/Users/nithya/lmk/apps/api/.env")
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "api", ".env"))
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "api"))
 from services.embeddings import embed
@@ -82,8 +82,18 @@ def fetch_rss():
 # ── Deduplication ─────────────────────────────────────
 
 def get_existing_urls():
-    res = supabase.table("insights").select("source_url").execute()
-    return {row["source_url"] for row in res.data}
+    urls = set()
+    page_size = 1000
+    offset = 0
+    while True:
+        res = supabase.table("insights").select("source_url").range(offset, offset + page_size - 1).execute()
+        batch = res.data or []
+        for row in batch:
+            urls.add(row["source_url"])
+        if len(batch) < page_size:
+            break
+        offset += page_size
+    return urls
 
 
 # ── Article Content ───────────────────────────────────
@@ -265,9 +275,11 @@ def process_item(item: dict) -> dict:
 
 def store_items(items: list[dict]):
     if not items:
+        print("  ⚠️  No items to store.")
         return
-    supabase.table("insights").insert(items).execute()
+    res = supabase.table("insights").insert(items).execute()
     print(f"  ✅ Stored {len(items)} new insights")
+    return res
 
 
 # ── Main ──────────────────────────────────────────────
@@ -305,7 +317,9 @@ def main():
         try:
             processed.append(process_item(item))
         except Exception as e:
+            import traceback
             print(f"  ⚠️  Skipped {item['source_url']}: {e}")
+            traceback.print_exc()
 
     print("💾 Storing to Supabase...")
     store_items(processed)
