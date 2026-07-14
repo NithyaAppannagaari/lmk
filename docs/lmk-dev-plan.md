@@ -216,8 +216,8 @@ What do you want to learn about?
 - [ ] Run DB migrations in Supabase (see Data Model above)
 - [ ] `pip install -r requirements.txt` to get sentence-transformers + numpy
 - [ ] Test: `lmk auth login` → `lmk --chat` → `lmk --llm`
-- [ ] Deploy API to Railway; configure env vars
-- [ ] Set up ingestion cron (Railway cron or Supabase pg_cron)
+- [ ] Deploy API to Render (free web service, see `render.yaml`); configure env vars
+- [ ] Set up ingestion cron (GitHub Actions, see `.github/workflows/ingest.yml`); add repo secrets
 
 ### Intentionally Out of Scope
 - Web app / mobile app
