@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 anthropic
-supabase
+supabase>=2.31
 python-dotenv
 feedparser
 httpx
