@@ -3,7 +3,7 @@ set -e
 
 REPO="https://github.com/NithyaAppannagaari/lmk.git"
 INSTALL_DIR="$HOME/.lmk"
-API_URL="https://zoological-smile-production-0bc2.up.railway.app/v1"
+API_URL="https://lmk-api.onrender.com/v1"
 
 echo ""
 echo "  installing lmk..."
