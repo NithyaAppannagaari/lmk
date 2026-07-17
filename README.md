@@ -25,6 +25,8 @@ Requires **Node.js v18+** ([nodejs.org](https://nodejs.org)).
 curl -fsSL https://raw.githubusercontent.com/NithyaAppannagaari/lmk/main/install.sh | bash
 ```
 
+The first `lmk` after a quiet stretch can take up to a minute while the server wakes up. Runs after that are fast.
+
 ## Usage
 
 ```bash
@@ -65,7 +67,7 @@ Using the same email always returns the same account and restores your personali
 
 ## How it works
 
-- News is ingested every hour from Hacker News, TechCrunch, arXiv, The Defiant, CoinDesk, and more
+- News is ingested every hour from Hacker News, TechCrunch, Axios, The Defiant, DL News, CoinDesk, The Block, Polymarket, and CryptoPanic
 - Each item is scored for signal quality (0–1) using Claude
 - Your `--chat` inputs are embedded and stored as a preference vector
 - On every `lmk` run, items are ranked by: `0.5 × signal_score + 0.5 × cosine_similarity(item, your_interests)`
